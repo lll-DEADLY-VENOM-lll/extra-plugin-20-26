@@ -1,16 +1,16 @@
 import random
 from pyrogram import filters
 from pyrogram.types import Message
-from config import LOG_GROUP_ID
+from motor.motor_asyncio import AsyncIOMotorClient as MongoClient
+from config import LOG_GROUP_ID, MONGO_DB_URI
 from VIPMUSIC import app
 from VIPMUSIC.core.call import VIP
 from VIPMUSIC.utils.database import delete_served_chat, get_assistant, set_loop
 
-# Yahan change kiya hai: Database instance 'misc' se fetch kiya hai
-from VIPMUSIC.misc import db 
-
-# --- Database Functions (Handling On/Off State) ---
-autoleavedb = db.autoleave
+# --- Database Setup (Direct Connection) ---
+# Yahan hum direct Mongo URI use kar rahe hain taaki 'AttributeError' na aaye
+mongo = MongoClient(MONGO_DB_URI)
+autoleavedb = mongo.VIPMUSIC.autoleave 
 
 async def is_autoleave_on(chat_id: int) -> bool:
     chat = await autoleavedb.find_one({"chat_id": chat_id})
@@ -42,7 +42,7 @@ photo = [
 async def toggle_autoleave(_, message: Message):
     if len(message.command) < 2:
         return await message.reply_text(
-            "**Usage:**\n`/autoleave on` - Bot leave hone par assistant bhi chala jayega.\n`/autoleave off` - Bot leave hone par assistant nahi jayega."
+            "**Usage:**\n`/autoleave on` - Assistant leaves when bot is removed.\n`/autoleave off` - Assistant stays when bot is removed."
         )
     
     state = message.command[1].lower()
@@ -60,8 +60,8 @@ async def toggle_autoleave(_, message: Message):
 async def on_left_chat_member(_, message: Message):
     try:
         # 1. Check if the member who left is the BOT itself
-        bot_id = (await app.get_me()).id
-        if message.left_chat_member.id != bot_id:
+        bot_details = await app.get_me()
+        if message.left_chat_member.id != bot_details.id:
             return
 
         chat_id = message.chat.id
@@ -83,14 +83,14 @@ async def on_left_chat_member(_, message: Message):
             f"<b>𝐂ʜᴀᴛ 𝐓ɪᴛʟᴇ :</b> {title}\n"
             f"<b>𝐂ʜᴀᴛ 𝐈ᴅ :</b> {chat_id}\n"
             f"<b>𝐑ᴇᴍᴏᴠᴇᴅ 𝐁ʏ :</b> {remove_by}\n"
-            f"<b>𝐁ᴏᴛ :</b> @{app.username}"
+            f"<b>𝐁ᴏᴛ :</b> @{bot_details.username}"
         )
         try:
             await app.send_photo(LOG_GROUP_ID, photo=random.choice(photo), caption=left_msg)
         except:
             pass
 
-        # 5. Cleanup
+        # 5. Cleanup Actions
         await delete_served_chat(chat_id)
         await VIP.st_stream(chat_id)
         await set_loop(chat_id, 0)
