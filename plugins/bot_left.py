@@ -5,7 +5,9 @@ from config import LOG_GROUP_ID
 from VIPMUSIC import app
 from VIPMUSIC.core.call import VIP
 from VIPMUSIC.utils.database import delete_served_chat, get_assistant, set_loop
-from VIPMUSIC.utils.database.common import db
+
+# Yahan change kiya hai: Database instance 'misc' se fetch kiya hai
+from VIPMUSIC.misc import db 
 
 # --- Database Functions (Handling On/Off State) ---
 autoleavedb = db.autoleave
@@ -38,7 +40,6 @@ photo = [
 # --- Toggle Command Handler ---
 @app.on_message(filters.command(["autoleave"]) & filters.group)
 async def toggle_autoleave(_, message: Message):
-    # Sirf admins hi ise change kar payein (optional but recommended)
     if len(message.command) < 2:
         return await message.reply_text(
             "**Usage:**\n`/autoleave on` - Bot leave hone par assistant bhi chala jayega.\n`/autoleave off` - Bot leave hone par assistant nahi jayega."
@@ -59,23 +60,24 @@ async def toggle_autoleave(_, message: Message):
 async def on_left_chat_member(_, message: Message):
     try:
         # 1. Check if the member who left is the BOT itself
-        if message.left_chat_member.id != (await app.get_me()).id:
+        bot_id = (await app.get_me()).id
+        if message.left_chat_member.id != bot_id:
             return
 
         chat_id = message.chat.id
         
-        # 2. Check if Auto-Leave is ON/OFF in database
+        # 2. Check if Auto-Leave is ON/OFF
         if not await is_autoleave_on(chat_id):
-            return # Agar OFF hai to yahi ruk jao
+            return 
 
-        # 3. Get Assistant and details
+        # 3. Get Assistant
         userbot = await get_assistant(chat_id)
         remove_by = (
             message.from_user.mention if message.from_user else "𝐔ɴᴋɴᴏᴡɴ 𝐔sᴇʀ"
         )
         title = message.chat.title
         
-        # 4. Send Log to Log Group
+        # 4. Send Log
         left_msg = (
             f"✫ <b><u>#𝐋ᴇғᴛ_𝐆ʀᴏᴜᴘ</u></b> ✫\n\n"
             f"<b>𝐂ʜᴀᴛ 𝐓ɪᴛʟᴇ :</b> {title}\n"
@@ -86,9 +88,9 @@ async def on_left_chat_member(_, message: Message):
         try:
             await app.send_photo(LOG_GROUP_ID, photo=random.choice(photo), caption=left_msg)
         except:
-            pass # Agar log group id galat ho to crash na ho
+            pass
 
-        # 5. Cleanup Actions
+        # 5. Cleanup
         await delete_served_chat(chat_id)
         await VIP.st_stream(chat_id)
         await set_loop(chat_id, 0)
