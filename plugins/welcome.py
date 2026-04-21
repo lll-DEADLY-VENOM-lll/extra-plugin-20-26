@@ -1,174 +1,101 @@
-# -*- coding: utf-8 -*-
-import asyncio
-import re
-import os
-import sys
-import locale
-from logging import getLogger
-from time import time
+import asyncio, os, random, aiohttp, re
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 from pyrogram import enums, filters
-from pyrogram.types import ChatMemberUpdated, InlineKeyboardButton, InlineKeyboardMarkup
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFont
-from pytz import timezone
-from datetime import datetime
+from pyrogram.types import ChatMemberUpdated, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pymongo import MongoClient
-import config
-from VIPMUSIC import app 
+from VIPMUSIC import app
+from config import MONGO_DB_URI
 
-# --- Encoding Fix (Server error hatane ke liye) ---
-if sys.stdout.encoding != 'utf-8':
-    sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1)
+# --- DB & Assets --- #
+db = MongoClient(MONGO_DB_URI).welcome_status_db.status
+FONT = "assets/elite_font.ttf"
 
-# --- Database Setup ---
-welcomedb = MongoClient(config.MONGO_DB_URI)
-status_db = welcomedb.welcome_status_db.status
+async def get_status(chat_id):
+    s = db.find_one({"chat_id": chat_id})
+    return s.get("w", "on") if s else "on"
 
-# --- Spam Protection Vars ---
-user_last_message_time = {}
-SPAM_WINDOW_SECONDS = 5
+async def set_status(chat_id, s):
+    db.update_one({"chat_id": chat_id}, {"$set": {"w": s}}, upsert=True)
 
-LOGGER = getLogger(__name__)
-
-# --- Helper Functions ---
-
-def convert_to_small_caps(text):
-    mapping = str.maketrans(
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-        "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘϙʀꜱᴛᴜᴠᴡxʏᴢᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘϙʀꜱᴛᴜᴠᴡxʏᴢ",
-    )
-    return text.translate(mapping)
-
-def circle(pfp, size=(415, 415)):
-    pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
-    mask = Image.new("L", size, 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0) + size, fill=255)
+# --- Pro Banner Engine --- #
+def create_banner(bg_img, pfp_img, u_id, u_name, count):
+    W, H = 1200, 600
+    bg = bg_img.resize((W, H), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(2))
+    bg = ImageEnhance.Brightness(bg).enhance(0.5)
+    
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(ov)
+    dr.polygon([(450, 0), (W, 0), (W, H), (350, H)], fill=(0, 0, 0, 200))
+    dr.line([(450, 0), (350, H)], fill=(0, 255, 255), width=8)
+    bg = Image.alpha_composite(bg, ov)
+    
+    # Profile Pic
+    pfp = pfp_img.resize((350, 350), Image.Resampling.LANCZOS)
+    mask = Image.new("L", (350, 350), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, 350, 350), fill=255)
     pfp.putalpha(mask)
-    return pfp
+    bg.paste(pfp, (50, 125), pfp)
+    ImageDraw.Draw(bg).ellipse((40, 115, 410, 485), outline=(0, 255, 255), width=10)
 
-def welcomepic(user_id, user_username, user_names, chat_name, user_photo):
-    try:
-        background = Image.open("assets/welcome.png").convert("RGBA")
-    except:
-        background = Image.new("RGBA", (1200, 600), (0, 0, 0))
+    try: font = ImageFont.truetype(FONT, 80)
+    except: font = ImageFont.load_default()
     
-    try:
-        user_img = Image.open(user_photo).convert("RGBA")
-    except:
-        user_img = Image.open("assets/nodp.png").convert("RGBA")
-        
-    pfp = circle(user_img, size=(385, 385))
-    background.paste(pfp, (595, 165), pfp)
+    draw = ImageDraw.Draw(bg)
+    u_name = re.sub(r'[^\x20-\x7E]+', '', u_name)[:12] or "User"
+    draw.text((490, 100), "WELCOME", font=font, fill=(0, 255, 255))
+    draw.text((490, 200), u_name.upper(), font=font, fill=(255, 255, 255))
+    draw.text((490, 330), f"ID: {u_id}\nRANK: #{count}", font=ImageFont.load_default(), fill=(200, 200, 200))
     
-    draw = ImageDraw.Draw(background)
-    
-    try:
-        font_bold = ImageFont.truetype("assets/font1.ttf", size=50)
-        font_regular = ImageFont.truetype("assets/font2.ttf", size=35)
-    except:
-        font_bold = font_regular = ImageFont.load_default()
+    path = f"downloads/{u_id}.png"
+    bg.convert("RGB").save(path)
+    return path
 
-    cyan = (0, 255, 255)
-    white = (255, 255, 255)
-
-    draw.text((60, 280), f"NAME: {user_names[:15]}", fill=cyan, font=font_bold)
-    draw.text((60, 360), f"ID: {user_id}", fill=white, font=font_regular)
-    draw.text((60, 410), f"USER: {user_username[:18]}", fill=white, font=font_regular)
-    draw.text((60, 460), f"CHAT: {chat_name[:15]}", fill=cyan, font=font_regular)
-    
-    out_path = f"downloads/welcome_{user_id}.png"
-    if not os.path.exists("downloads"):
-        os.makedirs("downloads")
-    background.convert("RGB").save(out_path)
-    return out_path
-
-# --- Database Handlers ---
-async def get_welcome_status(chat_id):
-    status = status_db.find_one({"chat_id": chat_id})
-    return status.get("welcome", "on") if status else "on"
-
-async def set_welcome_status(chat_id, state):
-    status_db.update_one({"chat_id": chat_id}, {"$set": {"welcome": state}}, upsert=True)
-
-# --- Bot Commands ---
-
-@app.on_message(filters.command("welcome") & ~filters.private)
-async def welcome_cmd(_, message):
-    user_id = message.from_user.id
-    current_time = time()
-    if current_time - user_last_message_time.get(user_id, 0) < SPAM_WINDOW_SECONDS:
+# --- Short Command: /wlc --- #
+@app.on_message(filters.command("wlc") & filters.group)
+async def wlc_toggle(_, m: Message):
+    u = await app.get_chat_member(m.chat.id, m.from_user.id)
+    if u.status not in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
         return
-    user_last_message_time[user_id] = current_time
-
-    if len(message.command) == 1:
-        return await message.reply_text("**Usage:**\n`/welcome on` or `/welcome off`")
-
-    chat_id = message.chat.id
-    user = await app.get_chat_member(chat_id, user_id)
     
-    if user.status in (enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER):
-        state = message.text.split(None, 1)[1].strip().lower()
-        if state in ["on", "off"]:
-            await set_welcome_status(chat_id, state)
-            await message.reply_text(f"**Welcome notification turned {state}!**")
-    else:
-        await message.reply("**Only admins can use this command!**")
+    if len(m.command) < 2:
+        return await m.reply("`Usage: /wlc on | off`")
+    
+    state = m.command[1].lower()
+    if state in ["on", "off"]:
+        await set_status(m.chat.id, state)
+        await m.reply(f"✅ Welcome set to **{state.upper()}**")
 
-# --- Chat Member Handler ---
+# --- Join Handler --- #
+@app.on_chat_member_updated(filters.group, group=10)
+async def join_hnd(_, member: ChatMemberUpdated):
+    if not (member.new_chat_member and not member.old_chat_member): return
+    if await get_status(member.chat.id) == "off": return
 
-@app.on_chat_member_updated(filters.group, group=-4)
-async def greet_new_members(_, member: ChatMemberUpdated):
+    user = member.new_chat_member.user
+    count = await app.get_chat_members_count(member.chat.id)
+    
     try:
-        if not (member.new_chat_member and not member.old_chat_member):
-            return
-
-        chat_id = member.chat.id
-        if await get_welcome_status(chat_id) == "off":
-            return
-
-        user = member.new_chat_member.user
-        chat_title = member.chat.title
-        user_id = user.id
-        user_name = user.first_name if user.first_name else "New Member"
-        user_username = f"@{user.username}" if user.username else "No Username"
+        # Background fallback
+        async with aiohttp.ClientSession() as s:
+            async with s.get("https://nekos.best/api/v2/wallpaper") as r:
+                bg_url = (await r.json())['results'][0]['url']
+                async with s.get(bg_url) as img_r: bg_img = Image.open(BytesIO(await img_r.read())).convert("RGBA")
         
-        try:
-            photo_file = await app.download_media(user.photo.big_file_id, file_name=f"pfp_{user_id}.png")
-        except:
-            photo_file = "assets/upic.png"
+        pfp_path = await app.download_media(user.photo.big_file_id) if user.photo else None
+        pfp_img = Image.open(pfp_path).convert("RGBA") if pfp_path else Image.new("RGBA", (350, 350), (20, 20, 40))
 
-        welcome_img = welcomepic(user_id, user_username, user_name, chat_title, photo_file)
-        
-        # --- AAPKA PURANA FANCY DESIGN ---
-        welcome_text = (
-            f"◦•●◉✿ ᴡᴇʟᴄᴏᴍᴇ ʙᴀʙʏ ✿◉●•◦\n"
-            f"▰▱▱▱▱▱▱▱▱▱▱▱▱▱▰\n\n"
-            f"● ɴᴀᴍᴇ ➥ {user.mention}\n"
-            f"● ᴜsᴇʀɴᴀᴍᴇ ➥ {user_username}\n"
-            f"● ᴜsᴇʀ ɪᴅ ➥ `{user_id}`\n\n"
-            f"❖ ᴘᴏᴡᴇʀᴇᴅ ʙʏ ➥ ˹ᴀᴀʀᴜ ᴍᴜsɪᴄ˼ ♡〬\n"
-            f"▰▱▱▱▱▱▱▱▱▱▱▱▱▱▰"
+        loop = asyncio.get_running_loop()
+        card = await loop.run_in_executor(None, create_banner, bg_img, pfp_img, user.id, user.first_name, count)
+
+        await app.send_photo(
+            member.chat.id, photo=card,
+            caption=f"<b>🌸 ɴᴇᴡ ɴᴀᴋᴀᴍᴀ 🌸</b>\n\n<b>👤 ɴᴀᴍᴇ:</b> {user.mention}\n<b>🆔 ɪᴅ:</b> <code>{user.id}</code>\n<b>✨ ᴜsᴇʀ:</b> <code>@{user.username}</code>\n<b>📊 ʀᴀɴᴋ:</b> #{count}\n\n<b>ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ {member.chat.title}!</b>",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ ᴀᴅᴅ ᴍᴇ", url=f"https://t.me/{app.username}?startgroup=true")]])
         )
-        
-        reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("๏ add me in new group ๏", url=f"https://t.me/{app.username}?startgroup=true")]
-        ])
-
-        await app.send_photo(chat_id, photo=welcome_img, caption=welcome_text, reply_markup=reply_markup)
-        
-        if os.path.exists(welcome_img): os.remove(welcome_img)
-        if photo_file != "assets/nodp.png" and os.path.exists(photo_file): os.remove(photo_file)
-
-    except Exception as e:
-        pass # Error ko ignore karein taaki bot band na ho
-
-# --- Metadata Section ---
+        if os.path.exists(card): os.remove(card)
+        if pfp_path: os.remove(pfp_path)
+    except: pass
 
 __MODULE__ = "Welcome"
-__HELP__ = """
-## Aᴜᴛᴏ-Wᴇᴄᴏᴍᴇ Mᴏᴅᴜᴇ Cᴏᴍᴍᴀɴᴅs
-
-/welcome [ᴏɴ|ᴏғғ] - Enable or disable welcome messages.
-
-**Note:** Only admins can use this command.
-"""
+__HELP__ = "/wlc on - Enable\n/wlc off - Disable"
