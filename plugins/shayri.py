@@ -1,13 +1,14 @@
 import random
+import time
 from VIPMUSIC.utils.database import get_served_chats
 from pyrogram import Client, filters
-
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from VIPMUSIC import app
 
-# Define a dictionary to track the last message timestamp for each user
+# Spam protection variables
 user_last_message_time = {}
 user_command_count = {}
-# Define the threshold for command spamming (e.g., 20 commands within 60 seconds)
 SPAM_THRESHOLD = 2
 SPAM_WINDOW_SECONDS = 5
 
@@ -67,10 +68,10 @@ async def help(client: Client, message: Message):
             [
                 [
                     InlineKeyboardButton(
-                        "✨𝚂𝚄𝙿𝙿𝙾𝚁𝚃✨", url=f"https://t.me/TG_FRIENDSS"
+                        "✨𝚂𝚄𝙿𝙿𝙾𝚁𝚃✨", url=f"https://t.me/NOBITA_SUPPORT"
                     ),
                     InlineKeyboardButton(
-                        "✨𝙾𝙵𝙵𝙸𝙲𝙴✨", url=f"https://t.me/VIP_CREATORS"
+                        "✨𝙾𝙵𝙵𝙸𝙲𝙴✨", url=f"https://t.me/VnioxTechApi"
                     ),
                 ]
             ]
@@ -86,10 +87,10 @@ async def help(client: Client, message: Message):
             [
                 [
                     InlineKeyboardButton(
-                        "✨𝚂𝚄𝙿𝙿𝙾𝚁𝚃✨", url=f"https://t.me/TG_FRIENDSS"
+                        "✨𝚂𝚄𝙿𝙿𝙾𝚁𝚃✨", url=f"https://t.me/NOBITA_SUPPORT"
                     ),
                     InlineKeyboardButton(
-                        "✨𝙾𝙵𝙵𝙸𝙲𝙴✨", url=f"https://t.me/VIP_CREATORS"
+                        "✨𝙾𝙵𝙵𝙸𝙲𝙴✨", url=f"https://t.me/VnioxTechApi"
                     ),
                 ]
             ]
