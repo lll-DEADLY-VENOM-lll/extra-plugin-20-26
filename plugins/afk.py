@@ -6,8 +6,9 @@ from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 
 from VIPMUSIC import app
-from VIPMUSIC.utils.afkdb import add_afk, is_afk, remove_afk
-from VIPMUSIC.utils.readable_time import get_readable_time
+# Imports ko yahan fix kiya gaya hai
+from VIPMUSIC.utils.database import add_afk, is_afk, remove_afk
+from VIPMUSIC.utils.formatters import get_readable_time
 
 
 @app.on_message(filters.command(["afk", "brb"], prefixes=["/", "!"]))
@@ -198,23 +199,23 @@ async def chat_watcher_func(_, message):
                 msg += f"**{user_name[:25]}** ɪs ʙᴀᴄᴋ ᴏɴʟɪɴᴇ ᴀɴᴅ ᴡᴀs ᴀᴡᴀʏ ғᴏʀ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n"
             if afktype == "animation":
                 if str(reasonafk) == "None":
-                    send = await message.reply_animation(
+                    await message.reply_animation(
                         data,
                         caption=f"**{user_name[:25]}** ɪs ʙᴀᴄᴋ ᴏɴʟɪɴᴇ ᴀɴᴅ ᴡᴀs ᴀᴡᴀʏ ғᴏʀ {seenago}\n\n",
                     )
                 else:
-                    send = await message.reply_animation(
+                    await message.reply_animation(
                         data,
                         caption=f"**{user_name[:25]}** ɪs ʙᴀᴄᴋ ᴏɴʟɪɴᴇ ᴀɴᴅ ᴡᴀs ᴀᴡᴀʏ ғᴏʀ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                     )
             if afktype == "photo":
                 if str(reasonafk) == "None":
-                    send = await message.reply_photo(
+                    await message.reply_photo(
                         photo=f"downloads/{userid}.jpg",
                         caption=f"**{user_name[:25]}** ɪs ʙᴀᴄᴋ ᴏɴʟɪɴᴇ ᴀɴᴅ ᴡᴀs ᴀᴡᴀʏ ғᴏʀ {seenago}\n\n",
                     )
                 else:
-                    send = await message.reply_photo(
+                    await message.reply_photo(
                         photo=f"downloads/{userid}.jpg",
                         caption=f"**{user_name[:25]}** ɪs ʙᴀᴄᴋ ᴏɴʟɪɴᴇ ᴀɴᴅ ᴡᴀs ᴀᴡᴀʏ ғᴏʀ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                     )
@@ -241,23 +242,23 @@ async def chat_watcher_func(_, message):
                         msg += f"**{replied_first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n"
                     if afktype == "animation":
                         if str(reasonafk) == "None":
-                            send = await message.reply_animation(
+                            await message.reply_animation(
                                 data,
                                 caption=f"**{replied_first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\n",
                             )
                         else:
-                            send = await message.reply_animation(
+                            await message.reply_animation(
                                 data,
                                 caption=f"**{replied_first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                             )
                     if afktype == "photo":
                         if str(reasonafk) == "None":
-                            send = await message.reply_photo(
+                            await message.reply_photo(
                                 photo=f"downloads/{replied_user_id}.jpg",
                                 caption=f"**{replied_first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\n",
                             )
                         else:
-                            send = await message.reply_photo(
+                            await message.reply_photo(
                                 photo=f"downloads/{replied_user_id}.jpg",
                                 caption=f"**{replied_first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                             )
@@ -297,23 +298,23 @@ async def chat_watcher_func(_, message):
                             msg += f"**{user.first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n"
                         if afktype == "animation":
                             if str(reasonafk) == "None":
-                                send = await message.reply_animation(
+                                await message.reply_animation(
                                     data,
                                     caption=f"**{user.first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\n",
                                 )
                             else:
-                                send = await message.reply_animation(
+                                await message.reply_animation(
                                     data,
                                     caption=f"**{user.first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                                 )
                         if afktype == "photo":
                             if str(reasonafk) == "None":
-                                send = await message.reply_photo(
+                                await message.reply_photo(
                                     photo=f"downloads/{user.id}.jpg",
                                     caption=f"**{user.first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\n",
                                 )
                             else:
-                                send = await message.reply_photo(
+                                await message.reply_photo(
                                     photo=f"downloads/{user.id}.jpg",
                                     caption=f"**{user.first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                                 )
@@ -343,23 +344,23 @@ async def chat_watcher_func(_, message):
                             msg += f"**{first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n"
                         if afktype == "animation":
                             if str(reasonafk) == "None":
-                                send = await message.reply_animation(
+                                await message.reply_animation(
                                     data,
                                     caption=f"**{first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\n",
                                 )
                             else:
-                                send = await message.reply_animation(
+                                await message.reply_animation(
                                     data,
                                     caption=f"**{first_name[:25]}** ɪs AFK sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                                 )
                         if afktype == "photo":
                             if str(reasonafk) == "None":
-                                send = await message.reply_photo(
+                                await message.reply_photo(
                                     photo=f"downloads/{user_id}.jpg",
                                     caption=f"**{first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\n",
                                 )
                             else:
-                                send = await message.reply_photo(
+                                await message.reply_photo(
                                     photo=f"downloads/{user_id}.jpg",
                                     caption=f"**{first_name[:25]}** ɪs ᴀғᴋ sɪɴᴄᴇ {seenago}\n\nʀᴇᴀsᴏɴ: `{reasonafk}`\n\n",
                                 )
@@ -368,7 +369,7 @@ async def chat_watcher_func(_, message):
             j += 1
     if msg != "":
         try:
-            send = await message.reply_text(msg, disable_web_page_preview=True)
+            await message.reply_text(msg, disable_web_page_preview=True)
         except:
             return
 
@@ -377,17 +378,9 @@ __MODULE__ = "AFK"
 __HELP__ = """
 **AFK Cᴏᴍᴍᴀɴᴅ**
 
-Tʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴀᴏᴡs ᴜsᴇʀs ᴛᴏ sᴇᴛ ᴀɴ AFK (Aᴡᴀʏ Fʀᴏᴍ Kᴇʏʙᴏᴀʀᴅ) sᴛᴀᴛᴜs. Wʜᴇɴ ᴀ ᴜsᴇʀ sᴇᴛs AFK, ᴛʜᴇɪʀ sᴛᴀᴛᴜs ᴡɪ ʙᴇ ᴅɪsᴘᴀʏᴇᴅ ᴡʜᴇɴᴇᴠᴇʀ sᴏᴍᴇᴏɴᴇ ᴍᴇɴᴛɪᴏɴs ᴛʜᴇᴍ ᴏʀ sᴇɴᴅs ᴀ ᴍᴇssᴀɢᴇ ɪɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛ.
-
-Fᴇᴀᴛᴜʀᴇs:
-- Sᴇᴛ AFK sᴛᴀᴛᴜs ᴡɪᴛʜ ᴏᴘᴛɪᴏɴᴀ ʀᴇᴀsᴏɴ ᴀɴᴅ ᴍᴇᴅɪᴀ (ᴀɴɪᴍᴀᴛɪᴏɴ, ᴘʜᴏᴛᴏ).
-- Dɪsᴘᴀʏ AFK sᴛᴀᴛᴜs ᴡʜᴇɴ ᴍᴇɴᴛɪᴏɴᴇᴅ ɪɴ ᴀ ɢʀᴏᴜᴘ ᴏʀ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛ.
-- Aᴜᴛᴏᴍᴀᴛɪᴄᴀʏ ʀᴇᴍᴏᴠᴇ AFK sᴛᴀᴛᴜs ᴜᴘᴏɴ ᴜsᴇʀ's ʀᴇᴛᴜʀɴ.
-- Sᴜᴘᴘᴏʀᴛs ᴠᴀʀɪᴏᴜs ᴛʏᴘᴇs ᴏғ AFK ᴍᴇssᴀɢᴇs: ᴛᴇxᴛ, ᴛᴇxᴛ ᴡɪᴛʜ ʀᴇᴀsᴏɴ, ᴀɴɪᴍᴀᴛɪᴏɴ, ᴀɴᴅ ᴘʜᴏᴛᴏ.
+Tʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴀʟʟᴏᴡs ᴜsᴇʀs ᴛᴏ sᴇᴛ ᴀɴ AFK (Aᴡᴀʏ Fʀᴏᴍ Kᴇʏʙᴏᴀʀᴅ) sᴛᴀᴛᴜs.
 
 Cᴏᴍᴍᴀɴᴅs:
-- /ᴀғᴋ: Sᴇᴛ AFK sᴛᴀᴛᴜs. Oᴘᴛɪᴏɴᴀʏ, ᴘʀᴏᴠɪᴅᴇ ᴀ ʀᴇᴀsᴏɴ ᴏʀ ʀᴇᴘʏ ᴡɪᴛʜ ᴍᴇᴅɪᴀ (ᴀɴɪᴍᴀᴛɪᴏɴ, ᴘʜᴏᴛᴏ).
+- /ᴀғᴋ: Sᴇᴛ AFK sᴛᴀᴛᴜs. Oᴘᴛɪᴏɴᴀʟʟʏ, ᴘʀᴏᴠɪᴅᴇ ᴀ ʀᴇᴀsᴏɴ ᴏʀ ʀᴇᴘʟʏ ᴡɪᴛʜ ᴍᴇᴅɪᴀ.
 - /ʙʀʙ: sᴀᴍᴇ ᴀs /ᴀғᴋ ᴄᴏᴍᴍᴀɴᴅ.
-
-Nᴏᴛᴇ: Wʜᴇɴ sᴇᴛ ᴀs AFK, ᴛʜᴇ ᴜsᴇʀ's sᴛᴀᴛᴜs ᴡɪ ʙᴇ ᴅɪsᴘᴀʏᴇᴅ ᴡʜᴇɴᴇᴠᴇʀ ᴛʜᴇʏ ᴀʀᴇ ᴍᴇɴᴛɪᴏɴᴇᴅ ᴏʀ ʀᴇᴄᴇɪᴠᴇ ᴀ ᴍᴇssᴀɢᴇ ɪɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴄʜᴀᴛ. AFK sᴛᴀᴛᴜs ᴡɪ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʏ ʀᴇᴍᴏᴠᴇᴅ ᴜᴘᴏɴ ᴜsᴇʀ's ʀᴇᴛᴜʀɴ.
 """
