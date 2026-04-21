@@ -1,23 +1,32 @@
 import random
-
 from pyrogram import filters
 from pyrogram.types import Message
-
 from config import LOG_GROUP_ID
 from VIPMUSIC import app
-from VIPMUSIC.utils.database import delete_served_chat, get_assistant
-from VIPMUSIC.utils.database import (
-    delete_filter,
-    get_cmode,
-    get_lang,
-    is_active_chat,
-    is_commanddelete_on,
-    is_maintenance,
-    is_nonadmin_chat,
-    set_loop,
-)
 from VIPMUSIC.core.call import VIP
+from VIPMUSIC.utils.database import delete_served_chat, get_assistant, set_loop
+from VIPMUSIC.utils.database.common import db
 
+# --- Database Functions (Handling On/Off State) ---
+autoleavedb = db.autoleave
+
+async def is_autoleave_on(chat_id: int) -> bool:
+    chat = await autoleavedb.find_one({"chat_id": chat_id})
+    if not chat:
+        return True  # Default: ON
+    return chat.get("state", True)
+
+async def autoleave_on(chat_id: int):
+    await autoleavedb.update_one(
+        {"chat_id": chat_id}, {"$set": {"state": True}}, upsert=True
+    )
+
+async def autoleave_off(chat_id: int):
+    await autoleavedb.update_one(
+        {"chat_id": chat_id}, {"$set": {"state": False}}, upsert=True
+    )
+
+# --- Photos for Logs ---
 photo = [
     "https://telegra.ph/file/1949480f01355b4e87d26.jpg",
     "https://telegra.ph/file/3ef2cc0ad2bc548bafb30.jpg",
@@ -26,27 +35,72 @@ photo = [
     "https://telegra.ph/file/2973150dd62fd27a3a6ba.jpg",
 ]
 
+# --- Toggle Command Handler ---
+@app.on_message(filters.command(["autoleave"]) & filters.group)
+async def toggle_autoleave(_, message: Message):
+    # Sirf admins hi ise change kar payein (optional but recommended)
+    if len(message.command) < 2:
+        return await message.reply_text(
+            "**Usage:**\n`/autoleave on` - Bot leave hone par assistant bhi chala jayega.\n`/autoleave off` - Bot leave hone par assistant nahi jayega."
+        )
+    
+    state = message.command[1].lower()
+    if state == "on":
+        await autoleave_on(message.chat.id)
+        await message.reply_text(f"✅ **Auto Leave Enabled** for {message.chat.title}")
+    elif state == "off":
+        await autoleave_off(message.chat.id)
+        await message.reply_text(f"❌ **Auto Leave Disabled** for {message.chat.title}")
+    else:
+        await message.reply_text("Invalid option! Use `on` or `off`.")
 
+# --- Left Chat Member Handler ---
 @app.on_message(filters.left_chat_member, group=-12)
 async def on_left_chat_member(_, message: Message):
     try:
-        userbot = await get_assistant(message.chat.id)
+        # 1. Check if the member who left is the BOT itself
+        if message.left_chat_member.id != (await app.get_me()).id:
+            return
 
-        left_chat_member = message.left_chat_member
-        if left_chat_member and left_chat_member.id == (await app.get_me()).id:
-            remove_by = (
-                message.from_user.mention if message.from_user else "𝐔ɴᴋɴᴏᴡɴ 𝐔sᴇʀ"
-            )
-            title = message.chat.title
-            username = (
-                f"@{message.chat.username}" if message.chat.username else "𝐏ʀɪᴠᴀᴛᴇ 𝐂ʜᴀᴛ"
-            )
-            chat_id = message.chat.id
-            left = f"✫ <b><u>#𝐋ᴇғᴛ_𝐆ʀᴏᴜᴘ</u></b> ✫\n\n𝐂ʜᴀᴛ 𝐓ɪᴛʟᴇ : {title}\n\n𝐂ʜᴀᴛ 𝐈ᴅ : {chat_id}\n\n𝐑ᴇᴍᴏᴠᴇᴅ 𝐁ʏ : {remove_by}\n\n𝐁ᴏᴛ : @{app.username}"
-            await app.send_photo(LOG_GROUP_ID, photo=random.choice(photo), caption=left)
-            await delete_served_chat(chat_id)
-            await VIP.st_stream(chat_id)
-            await set_loop(chat_id, 0)
-            await userbot.leave_chat(chat_id)
+        chat_id = message.chat.id
+        
+        # 2. Check if Auto-Leave is ON/OFF in database
+        if not await is_autoleave_on(chat_id):
+            return # Agar OFF hai to yahi ruk jao
+
+        # 3. Get Assistant and details
+        userbot = await get_assistant(chat_id)
+        remove_by = (
+            message.from_user.mention if message.from_user else "𝐔ɴᴋɴᴏᴡɴ 𝐔sᴇʀ"
+        )
+        title = message.chat.title
+        
+        # 4. Send Log to Log Group
+        left_msg = (
+            f"✫ <b><u>#𝐋ᴇғᴛ_𝐆ʀᴏᴜᴘ</u></b> ✫\n\n"
+            f"<b>𝐂ʜᴀᴛ 𝐓ɪᴛʟᴇ :</b> {title}\n"
+            f"<b>𝐂ʜᴀᴛ 𝐈ᴅ :</b> {chat_id}\n"
+            f"<b>𝐑ᴇᴍᴏᴠᴇᴅ 𝐁ʏ :</b> {remove_by}\n"
+            f"<b>𝐁ᴏᴛ :</b> @{app.username}"
+        )
+        try:
+            await app.send_photo(LOG_GROUP_ID, photo=random.choice(photo), caption=left_msg)
+        except:
+            pass # Agar log group id galat ho to crash na ho
+
+        # 5. Cleanup Actions
+        await delete_served_chat(chat_id)
+        await VIP.st_stream(chat_id)
+        await set_loop(chat_id, 0)
+        
+        # 6. Assistant leaves group
+        await userbot.leave_chat(chat_id)
+
     except Exception as e:
-        return
+        print(f"Error in autoleave: {e}")
+        return 
+
+__MODULE__ = "AutoLeave"
+__HELP__ = """
+**/autoleave [on/off]** - Jab bot group se nikala jayega, to assistant ko bhi nikalna hai ya nahi, ye yahan se set karein.
+"""
