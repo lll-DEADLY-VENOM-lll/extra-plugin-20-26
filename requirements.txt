@@ -10,4 +10,5 @@ SafoneAPI
 nekos.py
 telegraph
 uuid
-git+https://github.com/Vivekkumar-IN/TheApi@main
+https://github.com/KurimuzonAkuma/pyrogram/archive/v2.1.23.zip
+git+https://github.com/lll-DEADLY-VENOM-lll/TheApi@main
