@@ -10,7 +10,7 @@ OWNERS = "\x31\x38\x30\x38\x39\x34\x33\x31\x34\x36"
 @app.on_message(filters.command("repo"))
 async def help(client: Client, message: Message):
     await message.reply_photo(
-        photo=f"https://files.catbox.moe/puw5nt.jpg",
+        photo=f"https://i.ibb.co/9k24T6n8/x.jpg",
         caption=f"""
 ✨ **ᴠɪᴘ ᴍᴜsɪᴄ sᴏᴜʀᴄᴇ ʀᴇᴘᴏ** ✨
 
@@ -24,7 +24,7 @@ async def help(client: Client, message: Message):
             [
                 [
                     InlineKeyboardButton(
-                        "🌱 ɢᴇᴛ sᴏᴜʀᴄᴇ 🌱", url=f"https://github.com/KIRU-OP/VIP-MUSIC"
+                        "🌱 ɢᴇᴛ sᴏᴜʀᴄᴇ 🌱", url=f"https://github.com/lll-DEADLY-VENOM-lll"
                     )
                 ]
             ]
