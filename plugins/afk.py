@@ -7,7 +7,7 @@ from pyrogram.types import Message
 
 from VIPMUSIC import app
 # Imports ko yahan fix kiya gaya hai
-from VIPMUSIC.utils.database import is_afk, remove_afk
+from VIPMUSIC.utils.database import add_afk, is_afk, remove_afk
 from VIPMUSIC.utils.formatters import get_readable_time
 
 
